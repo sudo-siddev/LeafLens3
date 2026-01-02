@@ -1,0 +1,32 @@
+{
+  "training_date": "2026-01-03 01:46:13",
+  "model": "ResNet50",
+  "pretrained_weights": "ImageNet (IMAGENET1K_V2)",
+  "num_classes": 15,
+  "hyperparameters": {
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "num_epochs": 20,
+    "optimizer": "Adam",
+    "scheduler": "StepLR (step_size=7, gamma=0.1)"
+  },
+  "dataset": {
+    "name": "PlantVillage",
+    "train_samples": 18801,
+    "val_samples": 5733,
+    "test_samples": 5755
+  },
+  "best_validation_accuracy": 99.96511425082853,
+  "validation_metrics": {
+    "accuracy": 0.9996511425082854,
+    "f1_macro": 0.9997017694243253,
+    "f1_weighted": 0.9996511398225394
+  },
+  "test_metrics": {
+    "accuracy": 0.9993049522154648,
+    "f1_macro": 0.9994072620062304,
+    "f1_weighted": 0.9993048016144043
+  },
+  "model_path": "C:\\Users\\Toppo\\Downloads\\LeafLens\\App\\trained_model.pth",
+  "results_directory": "C:\\Users\\Toppo\\Downloads\\LeafLens\\App\\training_results"
+}

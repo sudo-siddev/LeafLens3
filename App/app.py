@@ -1,5 +1,5 @@
 import os
-from flask import Flask, redirect, render_template, request, jsonify
+from flask import Flask, redirect, render_template, request, jsonify, send_from_directory
 from PIL import Image
 import torchvision.transforms.functional as TF
 import numpy as np
@@ -7,18 +7,17 @@ import torch
 import pandas as pd
 import torch.nn as nn
 from torchvision import transforms
+import torchvision.models as models
+from pathlib import Path
+
 disease_info = pd.read_csv('disease_info.csv' , encoding='cp1252')
 supplement_info = pd.read_csv('supplement_info.csv',encoding='cp1252')
-class TempModel(nn.Module):
-    def __init__(self):
-        super(TempModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 5, (3, 3))
 
-    def forward(self, inp):
-        return self.conv1(inp)
-
-model = TempModel()
-model.load_state_dict(torch.load("ResNet50.pt"))
+# Initialize ResNet50 model with 39 classes
+num_classes = 39
+model = models.resnet50(weights=None)  # Don't load pretrained weights
+model.fc = nn.Linear(model.fc.in_features, num_classes)
+model.load_state_dict(torch.load("trained_model.pth", map_location=torch.device('cpu')))
 model.eval()
 
 transform = transforms.Compose([
@@ -26,24 +25,28 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-def predict():
+def predict(file_path):
     try:
-        # Get the uploaded image
-        image = request.files['image']
-        img = Image.open(image)
+        # Load and preprocess the image
+        img = Image.open(file_path)
         img = transform(img)
 
         # Make a prediction
         with torch.no_grad():
             output = model(img.unsqueeze(0))
-            predicted_class = torch.argmax(output)
+            predicted_class = torch.argmax(output, dim=1).item()
 
-        return jsonify({'prediction': predicted_class.item()})
+        return predicted_class
 
     except Exception as e:
-        return jsonify({'error': str(e)})
+        print(f"Error in prediction: {str(e)}")
+        raise e
 
 app = Flask(__name__)
+
+# Ensure uploads directory exists
+uploads_dir = os.path.join('static', 'uploads')
+os.makedirs(uploads_dir, exist_ok=True)
 
 @app.route('/')
 def home_page():
@@ -86,5 +89,42 @@ def market():
     return render_template('market.html', supplement_image=list(supplement_info['supplement image']),
                            supplement_name=list(supplement_info['supplement name']), disease=list(disease_info['disease_name']), buy=list(supplement_info['buy link']))
 
+@app.route('/documentation')
+def documentation():
+    # Load training results if available
+    training_data = None
+    try:
+        project_root = Path(__file__).parent.parent
+        training_summary_path = project_root / 'training_results' / 'training_summary.json'
+        if training_summary_path.exists():
+            import json
+            with open(training_summary_path, 'r') as f:
+                training_data = json.load(f)
+                # Format values for display
+                if 'validation_metrics' in training_data:
+                    training_data['validation_metrics']['accuracy_pct'] = f"{training_data['validation_metrics']['accuracy'] * 100:.2f}"
+                    training_data['validation_metrics']['f1_macro_str'] = f"{training_data['validation_metrics']['f1_macro']:.4f}"
+                    training_data['validation_metrics']['f1_weighted_str'] = f"{training_data['validation_metrics']['f1_weighted']:.4f}"
+                if 'test_metrics' in training_data:
+                    training_data['test_metrics']['accuracy_pct'] = f"{training_data['test_metrics']['accuracy'] * 100:.2f}"
+                    training_data['test_metrics']['f1_macro_str'] = f"{training_data['test_metrics']['f1_macro']:.4f}"
+                    training_data['test_metrics']['f1_weighted_str'] = f"{training_data['test_metrics']['f1_weighted']:.4f}"
+    except Exception as e:
+        print(f"Error loading training data: {e}")
+        training_data = None
+    
+    return render_template('documentation.html', training_data=training_data)
+
+# Route to serve training results images
+@app.route('/static/training_results/<path:filename>')
+def training_results(filename):
+    # Get the project root (parent of App directory)
+    project_root = Path(__file__).parent.parent
+    training_results_dir = project_root / 'training_results'
+    return send_from_directory(str(training_results_dir), filename)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # For local development
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)
