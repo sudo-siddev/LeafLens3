@@ -51,7 +51,7 @@ TEST_DATA_PATH = DATASET_ROOT / 'test'        # Test split (15%)
 # Model and results paths
 MODEL_SAVE_PATH = SCRIPT_DIR / 'trained_model.pth'
 RESULTS_DIR = SCRIPT_DIR / 'training_results'
-RESULTS_DIR.mkdir(exist_ok=True)
+
 
 # =============================================================================
 # HYPERPARAMETERS
