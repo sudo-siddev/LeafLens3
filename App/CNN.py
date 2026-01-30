@@ -48,10 +48,11 @@ class CNN(nn.Module):
         )
 
         self.dense_layers = nn.Sequential(
-            nn.Dropout(0.4),
             nn.Linear(50176, 1024),
             nn.ReLU(),
             nn.Dropout(0.4),
+            nn.Dropout(0.4),
+            
             nn.Linear(1024, K),
         )
 
